@@ -42,6 +42,7 @@ configs = {
             theta=10_000,
             qkv_bias=True,
             guidance_embed=True,
+            heavy_hitters_ratio=0.6  # new param - ratio to calculate k for H2O
         ),
         ae_path=os.getenv("AE"),
         ae_params=AutoEncoderParams(

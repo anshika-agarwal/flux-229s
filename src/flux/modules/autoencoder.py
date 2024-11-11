@@ -34,6 +34,8 @@ class AttnBlock(nn.Module):
         self.v = nn.Conv2d(in_channels, in_channels, kernel_size=1)
         self.proj_out = nn.Conv2d(in_channels, in_channels, kernel_size=1)
 
+        self.self_attention = SelfAttention(in_channels)
+
     def attention(self, h_: Tensor) -> Tensor:
         h_ = self.norm(h_)
         q = self.q(h_)
@@ -49,8 +51,8 @@ class AttnBlock(nn.Module):
         return rearrange(h_, "b 1 (h w) c -> b c h w", h=h, w=w, c=c, b=b)
 
     def forward(self, x: Tensor) -> Tensor:
-        return x + self.proj_out(self.attention(x))
-
+        # return x + self.proj_out(self.attention(x))
+        return x + self.proj_out(self.self_attention(x))
 
 class ResnetBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
@@ -132,7 +134,11 @@ class Encoder(nn.Module):
         block_in = self.ch
         for i_level in range(self.num_resolutions):
             block = nn.ModuleList()
-            attn = nn.ModuleList()
+            # attn = nn.ModuleList()
+            attn = nn.ModuleList([  # ?????
+                AttnBlock(block_out)
+                for _ in range(self.num_res_blocks)
+            ])
             block_in = ch * in_ch_mult[i_level]
             block_out = ch * ch_mult[i_level]
             for _ in range(self.num_res_blocks):
@@ -217,7 +223,11 @@ class Decoder(nn.Module):
         self.up = nn.ModuleList()
         for i_level in reversed(range(self.num_resolutions)):
             block = nn.ModuleList()
-            attn = nn.ModuleList()
+            # attn = nn.ModuleList()
+            attn = nn.ModuleList([
+                AttnBlock(block_out)
+                for _ in range(self.num_res_blocks + 1)
+            ])
             block_out = ch * ch_mult[i_level]
             for _ in range(self.num_res_blocks + 1):
                 block.append(ResnetBlock(in_channels=block_in, out_channels=block_out))
