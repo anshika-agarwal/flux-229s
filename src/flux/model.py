@@ -22,7 +22,7 @@ class FluxParams:
     theta: int
     qkv_bias: bool
     guidance_embed: bool
-    heavy_hitters_ratio: float  # new param - ratio to calculate k for H2O
+    # heavy_hitters_ratio: float  # new param - ratio to calculate k for H2O
 
 
 class Flux(nn.Module):
