@@ -22,7 +22,7 @@ class FluxParams:
     theta: int
     qkv_bias: bool
     guidance_embed: bool
-    heavy_hitters_ratio: float  # new param - ratio to calculate k for H2O
+    # heavy_hitters_ratio: float  # new param - ratio to calculate k for H2O
 
 
 class Flux(nn.Module):
@@ -87,6 +87,9 @@ class Flux(nn.Module):
     ) -> Tensor:
         if img.ndim != 3 or txt.ndim != 3:
             raise ValueError("Input img and txt tensors must have 3 dimensions.")
+
+        print("Running DoubleStreamBlock...")
+        print("Running SingleStreamBlock...")
 
         # running on sequences img
         img = self.img_in(img)

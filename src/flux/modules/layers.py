@@ -84,12 +84,11 @@ class QKNorm(torch.nn.Module):
         return q.to(v), k.to(v)
 
 class SelfAttention(nn.Module):
-    def __init__(self, dim: int, num_heads: int = 8, qkv_bias: bool = False, heavy_hitters_ratio=0.2):
+    def __init__(self, dim: int, heavy_hitters_ratio: float = 0.01, num_heads: int = 8, qkv_bias: bool = False):
         super().__init__()
         self.num_heads = num_heads
         self.heavy_hitters_ratio = heavy_hitters_ratio
         head_dim = dim // num_heads
-
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.norm = QKNorm(head_dim)
         self.proj = nn.Linear(dim, dim)
@@ -98,28 +97,9 @@ class SelfAttention(nn.Module):
         qkv = self.qkv(x)
         q, k, v = rearrange(qkv, "B L (K H D) -> K B H L D", K=3, H=self.num_heads)
         q, k = self.norm(q, k, v)
-
-        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.size(-1))
-        attention_weights = F.softmax(scores, dim=-1)
-
-        heavy_hitters = self.get_heavy_hitters(attention_weights)
-
-        # filter keys and values to use only the heavy hitters for final attention computation
-        k_topk = k.index_select(2, heavy_hitters)
-        v_topk = v.index_select(2, heavy_hitters)
-        scores_topk = torch.matmul(q, k_topk.transpose(-2, -1)) / math.sqrt(q.size(-1))
-        attention_weights_topk = F.softmax(scores_topk, dim=-1)
-
-        # Perform attention with reduced keys and values (top-K)
-        x = torch.matmul(attention_weights_topk, v_topk)
-        x = rearrange(x, "B H L D -> B L (H D)")
-        return self.proj(x)
-
-    def get_heavy_hitters(self, attention_weights: Tensor) -> Tensor:
-        cumulative_attention = attention_weights.sum(dim=-2)
-        k = int(self.heavy_hitters_ratio * attention_weights.size(-1))
-        _, heavy_hitters_indices = torch.topk(cumulative_attention, k=k, largest=True)
-        return heavy_hitters_indices
+        x = attention(q, k, v, pe=pe)
+        x = self.proj(x)
+        return x
 
 
 @dataclass

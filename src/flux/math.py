@@ -1,12 +1,37 @@
 import torch
 from einops import rearrange
 from torch import Tensor
+import math
 
 
 def attention(q: Tensor, k: Tensor, v: Tensor, pe: Tensor) -> Tensor:
+    print(f"Entering flux.math.attention function")
+    print(f"q shape: {q.shape}, k shape: {k.shape}, v shape: {v.shape}, pe shape: {pe.shape}")
+
+    heavy_hitters_ratio = 1.0
+
     q, k = apply_rope(q, k, pe)
 
-    x = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+    scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.size(-1))
+    attention_weights = torch.nn.functional.softmax(scores, dim=-1)
+
+    cumulative_attention = attention_weights.sum(dim=-2)  # Aggregate across queries
+    num_top_k = max(1, int(heavy_hitters_ratio * attention_weights.size(-1)))
+    _, top_k_indices = torch.topk(cumulative_attention, k=num_top_k, largest=True, dim=-1)
+
+    print(f"Using heavy_hitters_ratio {heavy_hitters_ratio}, top-k: {num_top_k}")
+    print(f"Top-k indices (first head): {top_k_indices[0, 0]}")
+
+    k_topk = torch.gather(k, dim=2, index=top_k_indices.unsqueeze(-1).expand(-1, -1, -1, k.size(-1)))
+    v_topk = torch.gather(v, dim=2, index=top_k_indices.unsqueeze(-1).expand(-1, -1, -1, v.size(-1)))
+
+    scores_topk = torch.matmul(q, k_topk.transpose(-2, -1)) / math.sqrt(q.size(-1))
+    attention_weights_topk = torch.nn.functional.softmax(scores_topk, dim=-1)
+
+    print(f"Reduced attention weights size: {attention_weights_topk.size()}")
+
+    x = torch.matmul(attention_weights_topk, v_topk)
+    #x = torch.nn.functional.scaled_dot_product_attention(q, k, v)
     x = rearrange(x, "B H L D -> B L (H D)")
 
     return x
