@@ -83,25 +83,6 @@ class QKNorm(torch.nn.Module):
         k = self.key_norm(k)
         return q.to(v), k.to(v)
 
-
-# class SelfAttention(nn.Module):
-#     def __init__(self, dim: int, num_heads: int = 8, qkv_bias: bool = False):
-#         super().__init__()
-#         self.num_heads = num_heads
-#         head_dim = dim // num_heads
-
-#         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
-#         self.norm = QKNorm(head_dim)
-#         self.proj = nn.Linear(dim, dim)
-
-#     def forward(self, x: Tensor, pe: Tensor) -> Tensor:
-#         qkv = self.qkv(x)
-#         q, k, v = rearrange(qkv, "B L (K H D) -> K B H L D", K=3, H=self.num_heads)
-#         q, k = self.norm(q, k, v)
-#         x = attention(q, k, v, pe=pe)
-#         x = self.proj(x)
-#         return x
-
 class SelfAttention(nn.Module):
     def __init__(self, dim: int, num_heads: int = 8, qkv_bias: bool = False, heavy_hitters_ratio=0.2):
         super().__init__()
