@@ -74,7 +74,6 @@ configs = {
             theta=10_000,
             qkv_bias=True,
             guidance_embed=False
-            # heavy_hitters_ratio=0.01  # new param - ratio to calculate k for H2O
         ),
         ae_path=os.getenv("AE"),
         ae_params=AutoEncoderParams(
@@ -102,27 +101,6 @@ def print_load_warning(missing: list[str], unexpected: list[str]) -> None:
     elif len(unexpected) > 0:
         print(f"Got {len(unexpected)} unexpected keys:\n\t" + "\n\t".join(unexpected))
 
-# def quantize_model(model):
-#     """
-#     Replaces all torch.nn.Linear layers in the model with bnb.nn.Linear8bitLt for 8-bit quantization.
-#     """
-#     for name, module in model.named_modules():
-#         if isinstance(module, torch.nn.Linear):
-#             # Replace Linear with Linear8bitLt
-#             parent = model
-#             components = name.split(".")
-#             for comp in components[:-1]:
-#                 parent = getattr(parent, comp)
-#             setattr(
-#                 parent,
-#                 components[-1],
-#                 bnb.nn.Linear8bitLt(
-#                     module.in_features, module.out_features, bias=module.bias is not None
-#                 ),
-#             )
-#     return model
-
-
 def load_flow_model(name: str, device: str | torch.device = "cuda", hf_download: bool = True):
     # Loading Flux
     print("Init model")
@@ -144,9 +122,6 @@ def load_flow_model(name: str, device: str | torch.device = "cuda", hf_download:
         sd = load_sft(ckpt_path, device=str(device))
         missing, unexpected = model.load_state_dict(sd, strict=False, assign=True)
         print_load_warning(missing, unexpected)
-
-    # print("Applying 8-bit quantization to the model...")
-    # model = quantize_model(model)
 
     return model
 
